@@ -8,13 +8,6 @@ It currently supports default (cold) and hot functions using the JSON format.
 Writing a Node.js function is simply a matter of writing a handler function
 that you pass to the FDK to invoke each time your function is called.
 
-Start by creating a node function with `fn init` and installing the FDK:
-
-```sh
-fn init --runtime node nodefunc
-cd nodefunc
-```
-
 This creates a simple hello world function in `func.js`:
 
 ```typescript
@@ -71,27 +64,26 @@ You should see the result
 {"message": "Hello from TypeScript!"}
 ```
 
-## Function Context
+## Express Request 
 
-Function invocation context details are available through an optional function argument.
-To receive a context object, simply add a second argument to your handler function.
-in the following example the `callID` is obtained from the context and included in 
-the response message:
+To get the Express request context, you can use the Request object part of the express API defination.
+you can get the cuurent request context details
+path : Get the http request URL of the function as received by the gateway
+query :  Get the HTTP request query as received by the gateway
+method :  Get the HTTP request method used to invoke the gateway
+headers :  Get the HTTP headers of the incoming request (read-only)
+:
 
 ```typescript
-const fdk=require('@fnproject/fdk');
-
-fdk.handle(function(input, ctx){
-  let name = 'World';
-  if (input) {
-    name = input;
-  }
-  return 'Hello ' + name + ' from Node call ' + ctx.callID + '!';
-})
+  app.get('/hello', (req: Request, res: Response) => {
+    res.send({
+        message: process.env.REACH_CONFIG ? process.env.REACH_CONFIG : "config not found"
+    });
+});
 ```
 
 
-The context contains other context information about the request such as: 
+<!-- The context contains other context information about the request such as: 
 
 * `req.config` : An Object containing function config variables (from the environment ) (read only)
 * `req.headers` : an object containing input headers for the event as lists of strings (read only)
@@ -103,26 +95,8 @@ The context contains other context information about the request such as:
 * `req.setResponseHeader(key,values...)` : Sets a response header to one or more values 
 * `req.addResponseHeader(key,values...)` : Appends values to an existing response header
 * `req.responseContentType` set/read the response content type of the function (read/write)
-* `req.httpGateway`  The HTTP Gateway context for this function (if set) see `HTTPGatewayContext` below  
+* `req.httpGateway`  The HTTP Gateway context for this function (if set) see `HTTPGatewayContext` below   -->
 
- 
-
-## Asynchronous function responses
-
-You return an asynchronous response from a function by returning a Javascript `Promise` from the function body: 
-
-```javascript
-const fdk=require('@fnproject/fdk');
-
-fdk.handle(function(input, ctx){
-  return new Promise((resolve,reject)=>{
-     setTimeout(()=>resolve("Hello"),1000);
-  });
-})
-```
-
-You can also  use `async`/`await` calling conventions in functions. 
- 
 ## Handling non-json input and output
 
 By default the FDK will try and convert input into a JSON object, or fall back to its string format otherwise. 
@@ -132,10 +106,9 @@ Likewise by default the output of a function will be treated as a JSON object an
 
 To change the handling of the input you can add an additional `options` parameter to `fdk.handle` that specifies the input handling strategy: 
 
-```javascript
-function myfunction(input,ctx){}
-
-fdk.handle(myfunction, {inputMode: 'string'})
+```typescript
+const app = express();
+handle(app, {framework: "express", inputMode: 'string'});
 ```
 
 valid input modes are: 
@@ -145,56 +118,52 @@ valid input modes are:
 
 To change the output handling of your function from the default you should wrap the result value using a response decorator: 
 
-```javascript
-function myfunction(input,ctx){
-   return fdk.rawResult("Some string")
-}
+> [!NOTE]  the output mode of the function is only JSON, will add support for other types based on requests to implement it.
 
-fdk.handle(myfunction)
-```
-
-the available decorators are: 
+<!-- the available decorators are: 
 * `rawResult({string|Buffer})` passes the result directly to the response - the value can be a string or a buffer - this will not encode quotes on string objects 
-* `streamResult({ReadableStream})` pipes the contents of a `ReadableStream` into the output - this allows processing of data from files or HTTP responses 
+* `streamResult({ReadableStream})` pipes the contents of a `ReadableStream` into the output - this allows processing of data from files or HTTP responses  -->
 
 
 ## Using HTTP headers and setting HTTP status codes
-You can read http headers passed into a function invocation using `ctx.protocol.header(key)`, this returns the first header value of the header matching `key` (after canonicalization)  and `ctx.protocol.headers` which returns an object containing all headers.  
+You can read http headers passed into a function invocation using `Request.Headers[key]`, this returns the first header value of the header matching `key` (after canonicalization)  and `Request.Headers` which returns an object containing all headers.  
 
-```javascript
-const fdk=require('@fnproject/fdk');
+```typescript
+import { handle } from './fdk';
+import express, { Request, Response } from 'express';
 
-fdk.handle(function(input, ctx){
-  
-  let hctx = ctx.httpGateway
-  console.log("Request URL" , hctx.requestURL)
-  
-  console.log("Authorization header:" , hctx.getHeader("Authorization"))
-  console.log( hctx.headers) // prints e.g. { "Content-Type": ["application/json"],"Accept":["application/json","text/plain"] } 
-})
+const app = express();
+app.use(express.json());
+
+app.get('/hello', (req: Request, res: Response) => {
+    const contenttype = req.headers['content-type']
+    
+    res.send({
+        message: 'Hello from TypeScript!'
+    });
+});
+
+handle(app, {framework: "express"});
 ```
 
 Outbound headers and the HTTP status code can be modified in a similar way:  
 
 ```javascript
-const fdk=require('@fnproject/fdk');
+import { handle } from './fdk';
+import express, { Request, Response } from 'express';
 
-fdk.handle(function(input, ctx){
-    let hctx = ctx.httpGateway
+const app = express();
+app.use(express.json());
 
-   hctx.setResponseHeader("Location","http://example.com")
-   hctx.statusCode = 302
-})
+app.get('/hello', (req: Request, res: Response) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.send({
+        message: 'Hello from TypeScript!'
+    });
+});
+
+handle(app, {framework: "express"});
 ```
-
-The `HTTPGatewayContext` object has a similar interface to `Context` but accesses only the HTTP headers of the function: 
-
-* `hctx.requestURL` : Get the http request URL of the function as received by the gateway (null if not set)
-* `hctx.method` : Get the HTTP request method used to invoke the gateway 
-* `hctx.headers` : Get the HTTP headers of the incoming request (read-only)
-* `hctx.statusCode` : Set the the HTTP status code of the HTTP resposne 
-& `hctx.setResponseHeader(key,values..)`, `hctx.addResponseHeader(key,values)` Set/add response headers 
-
 ## Fn and Node.js Dependencies
 Fn handles Node.js dependencies in the following way:
 * If a `package.json` is present without a `node_modules` directory, an Fn build runs an `npm install` within the build process and installs your dependencies.
