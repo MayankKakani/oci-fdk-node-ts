@@ -1,4 +1,4 @@
-import { handle } from '../src/fdk';
+import { handle } from '../fdk/fdk';
 import express, { Request, Response } from 'express';
 
 const app = express();
