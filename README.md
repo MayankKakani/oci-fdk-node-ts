@@ -5,6 +5,11 @@ It currently supports default (cold) and hot functions using the JSON format.
 
 ## Creating a Node Function
 
+In order to use this updated Function Development Kit, you need to clone the `./fdk` folder into your current project
+under fdk directory and import the handle function into your application code as mentioned in the example below.
+This FDK is written in typescript, to run this as a function you need to run `tsc` on your project to compile this into
+Javascript and run the generated javascript code using `node ./dist/func.js`
+
 Writing a Node.js function is simply a matter of writing a handler function
 that you pass to the FDK to invoke each time your function is called.
 
