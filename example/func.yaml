@@ -1,0 +1,9 @@
+schema_version: 20180708
+name: reach-cube
+version: 0.0.35
+runtime: node
+build_image: fnproject/node:16-dev
+run_image: fnproject/node:16
+entrypoint: node ./dist/func.js
+config:
+  REACH_CONFIG: http://google.com
